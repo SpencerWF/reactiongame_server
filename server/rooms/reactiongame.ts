@@ -29,6 +29,7 @@ export class State extends Schema {
     }
 
     removePlayer (id: string) {
+        this.player_count -= 1;
         delete this.players[ id ];
     }
 }
@@ -46,15 +47,21 @@ export class ReactionGameRoom extends Room<State> {
         })
 
         this.onMessage("time", (client, message) => {
+            if (this.state.point_to == "-1") {
+                this.timer_delayed.clear();
+                this.timer_delayed = this.clock.setTimeout(() => {
+                    this.modeToZero();
+                }, 100);
+
+            }
             console.log("Time received by player " + client.sessionId + " was " + message["time_taken"] + ".");
-            console.log("It has type " + typeof(message["time_taken"]))
             if (this.state.mode == 1 && message["time_taken"] < this.state.min_time) {
                 this.state.min_time = message["time_taken"];
                 this.state.point_to = client.sessionId;
             }
         })
 
-        let t_out = 2000 + Math.floor(Math.random()*5000)
+        // let t_out = 2000 + Math.floor(Math.random()*5000)
         
     }
 
@@ -102,20 +109,21 @@ export class ReactionGameRoom extends Room<State> {
     }
 
     playerWin() {
-        this.broadcast("win",this.state.point_to + "has won the reaction game!")
+        this.broadcast("win", {winner: this.state.point_to})
         this.timer_delayed.clear();
 
         //Win event
         //Send players back to lobby with winner receiving a point
         for (const key in this.clients) {
-            console.log("Player " + key +" will be logged out.");
+            // console.log("Player " + key +" will be logged out.");
             if (this.clients.hasOwnProperty(key)) {
-                console.log("Player " + key + " has been logged out.");
+                // console.log("Player " + key + " has been logged out.");
                 const element = this.clients[key];
                 this.onLeave(this.clients[key]);
             }
         }
-        this.onDispose();
+        this.disconnect();
+        // this.onDispose();
     }
 
     modeToZero() {
